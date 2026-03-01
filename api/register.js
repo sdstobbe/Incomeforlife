@@ -130,9 +130,10 @@ export default {
         const msg = dup
           ? 'An account with that email or referrer code already exists.'
           : 'We could not create your account. Please try again.'
+        const detail = insertError.message || insertError.details || JSON.stringify(insertError)
         return jsonResponse({
           message: msg,
-          detail: insertError.message,
+          detail,
           code: insertError.code,
         }, 400)
       }
