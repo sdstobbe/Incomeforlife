@@ -51,7 +51,8 @@ export default function LandingPage() {
         } else {
           const msg = data.message || 'We could not create your account. Please try again or contact support.'
           const detail = data.detail ? String(data.detail) : ''
-          setSubmitError(detail ? `Error: ${detail}` : msg)
+          const full = [msg, detail].filter(Boolean).join(' — ')
+          setSubmitError(full)
         }
         return
       }

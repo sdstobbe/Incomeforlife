@@ -92,10 +92,10 @@ export default {
         const msg = dup
           ? 'An account with that email or referrer code already exists.'
           : 'We could not create your account. Please try again.'
-        const detail = insertError.message || insertError.details || String(insertError)
+        const detail = insertError.message || insertError.error_description || insertError.details || (typeof insertError === 'object' ? JSON.stringify(insertError) : String(insertError))
         return Response.json({
-          message: detail ? `${msg} (${detail})` : msg,
-          detail,
+          message: msg,
+          detail: detail || 'Unknown database error',
           code: insertError.code,
         }, { status: 400 })
       }
