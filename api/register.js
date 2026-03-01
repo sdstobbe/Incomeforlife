@@ -4,9 +4,14 @@ const crypto = require('crypto')
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = supabaseUrl && supabaseServiceRoleKey
-  ? createClient(supabaseUrl, supabaseServiceRoleKey)
-  : null
+let supabase = null
+if (supabaseUrl && supabaseServiceRoleKey) {
+  try {
+    supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
+  } catch (e) {
+    console.error('Supabase client init error', e.message)
+  }
+}
 
 function generateReferrerCode(length = 6) {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -22,6 +27,7 @@ function hashPassword(password) {
 }
 
 module.exports = async (req, res) => {
+  try {
   if (req.method !== 'POST') {
     res.status(405).json({ message: 'Method not allowed' })
     return
@@ -113,14 +119,26 @@ module.exports = async (req, res) => {
   if (insertError) {
     console.error('Supabase insert error', insertError)
     const dup = insertError.code === '23505'
-    res.status(400).json({
-      message: dup
-        ? 'An account with that email or referrer code already exists.'
-        : 'We could not create your account. Please try again.',
-    })
+    const msg = dup
+      ? 'An account with that email or referrer code already exists.'
+      : 'We could not create your account. Please try again.'
+    const body = { message: msg }
+    if (process.env.NODE_ENV !== 'production' && insertError.message) {
+      body.detail = insertError.message
+      body.code = insertError.code
+    }
+    res.status(400).json(body)
     return
   }
 
   res.status(201).json({ ok: true, referrerCode: newReferrerCode })
+  } catch (err) {
+    console.error('Register API error', err)
+    res.status(500).json({
+      message: 'A server error occurred.',
+      detail: err && err.message ? err.message : String(err),
+      code: err && err.code ? err.code : undefined,
+    })
+  }
 }
 
