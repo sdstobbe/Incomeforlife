@@ -1,45 +1,46 @@
+import { createClient } from '@supabase/supabase-js'
+import { createHash } from 'crypto'
+
 export default {
   async fetch(request) {
-    const url = process.env.SUPABASE_URL
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!url || !key) {
-      return Response.json(
-        { message: 'Server misconfigured. Missing Supabase credentials.' },
-        { status: 500 }
-      )
-    }
-
-    if (request.method !== 'POST') {
-      return Response.json({ message: 'Method not allowed' }, { status: 405 })
-    }
-
-    let body = {}
     try {
-      body = await request.json()
-    } catch {
-      body = {}
-    }
+      const url = process.env.SUPABASE_URL
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (!url || !key) {
+        return Response.json(
+          { message: 'Server misconfigured. Missing Supabase credentials.', detail: 'SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set' },
+          { status: 500 }
+        )
+      }
 
-    const {
-      firstName = '',
-      lastName = '',
-      email = '',
-      phone = '',
-      password = '',
-      referrerCode = '',
-    } = body
+      if (request.method !== 'POST') {
+        return Response.json({ message: 'Method not allowed' }, { status: 405 })
+      }
 
-    const code = (referrerCode || '').trim().toUpperCase()
-    if (!code) {
-      return Response.json({
-        field: 'referrerCode',
-        message: 'A referrer code is required. Please enter the code from the Income For Life member who invited you.',
-      }, { status: 400 })
-    }
+      let body = {}
+      try {
+        body = await request.json()
+      } catch {
+        body = {}
+      }
 
-    try {
-      const { createClient } = await import('@supabase/supabase-js')
-      const { default: crypto } = await import('crypto')
+      const {
+        firstName = '',
+        lastName = '',
+        email = '',
+        phone = '',
+        password = '',
+        referrerCode = '',
+      } = body
+
+      const code = (referrerCode || '').trim().toUpperCase()
+      if (!code) {
+        return Response.json({
+          field: 'referrerCode',
+          message: 'A referrer code is required. Please enter the code from the Income For Life member who invited you.',
+        }, { status: 400 })
+      }
+
       const supabase = createClient(url, key)
 
       const { data: referrer, error: referrerError } = await supabase
@@ -68,7 +69,7 @@ export default {
         }, { status: 400 })
       }
 
-      const passwordHash = crypto.createHash('sha256').update(password).digest('hex')
+      const passwordHash = createHash('sha256').update(password).digest('hex')
       const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
       let newCode = ''
       for (let i = 0; i < 6; i++) {
@@ -102,10 +103,12 @@ export default {
 
       return Response.json({ ok: true, referrerCode: newCode }, { status: 201 })
     } catch (err) {
-      console.error('Register API error', err)
+      const detail = err?.message || String(err)
+      const stack = err?.stack || ''
       return Response.json({
         message: 'A server error occurred.',
-        detail: (err && err.message) ? err.message : String(err),
+        detail,
+        stack: stack.slice(0, 500),
       }, { status: 500 })
     }
   },
