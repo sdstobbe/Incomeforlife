@@ -49,7 +49,9 @@ export default function LandingPage() {
             'Referrer code not recognized. You must have a valid code from an existing Income For Life member to proceed.',
           )
         } else {
-          setSubmitError(data.message || 'We could not create your account. Please try again or contact support.')
+          const msg = data.message || 'We could not create your account. Please try again or contact support.'
+          const detail = data.detail ? ` (${data.detail})` : ''
+          setSubmitError(msg + detail)
         }
         return
       }
