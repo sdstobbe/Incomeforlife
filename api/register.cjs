@@ -1,15 +1,15 @@
 const { createClient } = require('@supabase/supabase-js')
 const crypto = require('crypto')
 
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-let supabase = null
-if (supabaseUrl && supabaseServiceRoleKey) {
+function getSupabase() {
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return null
   try {
-    supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
+    return createClient(url, key)
   } catch (e) {
     console.error('Supabase client init error', e.message)
+    return null
   }
 }
 
@@ -26,13 +26,33 @@ function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex')
 }
 
+function parseBody(req) {
+  let body = req.body
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body)
+    } catch {
+      body = {}
+    }
+  }
+  return body || {}
+}
+
 module.exports = async (req, res) => {
+  const sendError = (status, message, detail, code) => {
+    try {
+      res.status(status).json({ message, detail: detail || undefined, code: code || undefined })
+    } catch (e) {
+      console.error('Failed to send error response', e)
+    }
+  }
   try {
   if (req.method !== 'POST') {
     res.status(405).json({ message: 'Method not allowed' })
     return
   }
 
+  const body = parseBody(req)
   const {
     firstName = '',
     lastName = '',
@@ -40,7 +60,7 @@ module.exports = async (req, res) => {
     phone = '',
     password = '',
     referrerCode = '',
-  } = req.body || {}
+  } = body
 
   const code = (referrerCode || '').trim().toUpperCase()
 
@@ -52,8 +72,8 @@ module.exports = async (req, res) => {
     return
   }
 
+  const supabase = getSupabase()
   if (!supabase) {
-    // Fallback: simple in-memory validation so the flow still works
     const VALID_REFERRER_CODES = ['ABC123', 'BG001', 'DSJ100']
     if (!VALID_REFERRER_CODES.includes(code)) {
       res.status(400).json({
@@ -62,11 +82,9 @@ module.exports = async (req, res) => {
       })
       return
     }
-
     res.status(201).json({
       ok: true,
       note: 'Supabase is not configured yet. No data has been saved.',
-      // In this fallback we just echo the referrer code so the UI can still show something.
       referrerCode: code,
     })
     return
@@ -79,7 +97,6 @@ module.exports = async (req, res) => {
     return
   }
 
-  // Check that the referrer code exists in members table
   const { data: referrer, error: referrerError } = await supabase
     .from('members')
     .select('id, referrer_code')
@@ -88,7 +105,7 @@ module.exports = async (req, res) => {
 
   if (referrerError) {
     console.error('Supabase referrer lookup error', referrerError)
-    res.status(500).json({ message: 'Error checking referrer code. Please try again.' })
+    sendError(500, 'Error checking referrer code. Please try again.', referrerError.message, referrerError.code)
     return
   }
 
@@ -101,7 +118,6 @@ module.exports = async (req, res) => {
   }
 
   const passwordHash = hashPassword(password)
-
   const newReferrerCode = generateReferrerCode()
 
   const { error: insertError } = await supabase
@@ -133,11 +149,8 @@ module.exports = async (req, res) => {
   res.status(201).json({ ok: true, referrerCode: newReferrerCode })
   } catch (err) {
     console.error('Register API error', err)
-    res.status(500).json({
-      message: 'A server error occurred.',
-      detail: err && err.message ? err.message : String(err),
-      code: err && err.code ? err.code : undefined,
-    })
+    const detail = (err && err.message) ? err.message : String(err)
+    const code = err && err.code
+    sendError(500, 'A server error occurred.', detail, code)
   }
 }
-
