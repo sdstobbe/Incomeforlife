@@ -1,5 +1,4 @@
 .vercel
-output
 node_modules
 .env
 .env.local
