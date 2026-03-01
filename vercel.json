@@ -1,4 +1,6 @@
 {
-  "outputDirectory": "output",
-  "rewrites": [{"source": "/((?!api/).*)", "destination": "/index.html"}]
+  "outputDirectory": ".vercel/output",
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
 }
