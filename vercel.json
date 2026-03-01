@@ -1,5 +1,5 @@
 {
-  "outputDirectory": ".vercel/output",
+  "outputDirectory": "output",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
