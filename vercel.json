@@ -1,7 +1,7 @@
 {
   "rewrites": [{"source": "/((?!api/).*)", "destination": "/index.html"}],
   "functions": {
-    "api/register.mjs": {
+    "api/register.js": {
       "runtime": "nodejs20.x"
     }
   }
