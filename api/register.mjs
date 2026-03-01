@@ -118,7 +118,8 @@ export default async function handler(req, res) {
         ? 'An account with that email or referrer code already exists.'
         : 'We could not create your account. Please try again.'
       const detail = insertError.message || insertError.details || JSON.stringify(insertError)
-      res.status(400).json({ message: msg, detail, code: insertError.code })
+      const fullMessage = detail ? `${msg} (${detail})` : msg
+      res.status(400).json({ message: fullMessage, detail, code: insertError.code })
       return
     }
 
