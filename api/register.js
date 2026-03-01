@@ -122,12 +122,11 @@ module.exports = async (req, res) => {
     const msg = dup
       ? 'An account with that email or referrer code already exists.'
       : 'We could not create your account. Please try again.'
-    const body = { message: msg }
-    if (process.env.NODE_ENV !== 'production' && insertError.message) {
-      body.detail = insertError.message
-      body.code = insertError.code
-    }
-    res.status(400).json(body)
+    res.status(400).json({
+      message: msg,
+      detail: insertError.message || undefined,
+      code: insertError.code || undefined,
+    })
     return
   }
 
